@@ -77,7 +77,7 @@ O projeto contribuirá para a **melhoria da qualidade dos produtos**, reduzindo 
 
 Acesse o guia completo sobre como executar o dashboard através do link abaixo:
 
-🔗 Link: https://github.com/Inteli-College/2025-1A-T06-ES11-G02/blob/main/docs/Projeto_Gestao_Governanca_Dados.md#passos-para-executar-o-dashboard
+🔗 Link: https://github.com/InteliProjects/2025-1A-T06-ES11-G02/blob/main/docs/Projeto_Gestao_Governanca_Dados.md#passos-para-executar-o-dashboard
 
 ---
 
