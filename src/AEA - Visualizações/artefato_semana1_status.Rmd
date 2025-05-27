@@ -1,0 +1,141 @@
+---
+title: "Análise Exploratória de Falhas na Produção"
+output: html_document
+date: "2025-02-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(dplyr)
+library(ggplot2)
+library(corrplot)
+library(FactoMineR)
+library(factoextra)
+```
+
+# Exploração da tabela
+
+```{r}
+# Carregar os dados
+raw_data_status <- InteliStatus  # Conjunto de dados original
+# Visualizar as primeiras linhas
+raw_data_status
+```
+
+
+
+# **2. Resumo Estatístico e Estrutura dos Dados**
+```{r}
+# Contagem de ocorrências por tipo de falha
+status_counts <- raw_data_status %>%
+  count(STATUS, sort = TRUE)
+
+# Exibir resumo das falhas
+print(status_counts)
+```
+
+```{r}
+summary(raw_data_status)
+```
+
+### Contagem de nulos
+
+```{r}
+colSums(is.na(raw_data_status))
+```
+
+### Distribuição das variaveis categoricas.
+
+```{r}
+# Frequência de STATUS
+table(raw_data_status$STATUS)
+
+# Frequência de RESULT_ID
+freq_tabela <- table(raw_data_status$RESULT_ID)
+freq_percent <- prop.table(freq_tabela) * 100
+print(round(freq_percent, 2))  # Arredonda para duas casas decimais
+
+```
+
+### valores únicos por coluna
+
+```{r}
+
+sapply(raw_data_status, function(x) length(unique(x)))
+
+```
+```{r}
+raw_data_status
+```
+
+## Relatorio Análise Exploratoria das variaveis
+
+### Modificações e Estrutura
+
+
+-   **Mantidos**:
+    -   `ID`: Mantido para relacionar com os dados do veiculo.
+    -   `STATUS`: Identifica o ponto da montagem onde o carro passou.
+    -   `STATUS_DATA`: Registro temporal.
+
+#### Estrutura da Tabela
+
+-   **`ID`** → Identificação do veículo (chave estrangeira). Serve para relacionar com os dados do veiculo. \
+-   **`STATUS`** → Código do status.Identifica o ponto da esteira onde o carro passou.\
+-   **`STATUS_DATA`** → Registro temporal..
+
+#### Regras e Considerações
+
+1.  **Resultados condicionais à configuração do veículo**
+    -   Nem todos os veículos passam pelos mesmos testes.\
+    -   Exemplo: Apenas modelos com ar-condicionado recebem o teste de carga de gás.
+
+
+
+--- 
+# Visoes
+
+```{r}
+# Carregar as bibliotecas necessárias
+# Converter STATUS_DATA para formato de data/hora.
+# Extraímos os primeiros 19 caracteres, que correspondem a "YYYY-MM-DD-HH.MM.SS".
+# Carregar pacotes
+library(dplyr)
+library(lubridate)
+library(stringr)
+
+# Ler o CSV (substitua pelo caminho real do arquivo)
+dados <- raw_data_status
+
+# Remover espaços em branco e garantir que a coluna seja tratada como string
+dados$STATUS_DATA <- str_trim(dados$STATUS_DATA)
+
+# Extraímos os primeiros 19 caracteres "YYYY-MM-DD-HH.MM.SS" e substituímos os "." por ":"
+dados$STATUS_DATA <- str_sub(dados$STATUS_DATA, 1, 19) %>%
+  str_replace_all("\\.", ":")
+
+# Converter para formato datetime
+dados$STATUS_DATA <- ymd_hms(dados$STATUS_DATA, quiet = TRUE) 
+
+# Filtrar linhas onde STATUS_DATA foi convertido corretamente
+dados <- dados %>% filter(!is.na(STATUS_DATA))
+
+# Calcular tempo total de montagem por ID
+tempo_total <- dados %>%
+  group_by(ID) %>%
+  summarise(
+    min_tempo = min(STATUS_DATA),
+    max_tempo = max(STATUS_DATA),
+    tempo_total = difftime(max_tempo, min_tempo, units = "mins") # Alterar para "hours" se necessário
+  )
+
+# Exibir resultado
+print(tempo_total)
+
+
+```
+
+
+---
+
+

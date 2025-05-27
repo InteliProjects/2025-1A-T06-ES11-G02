@@ -1,0 +1,149 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Exploração Tabela
+
+```{r}
+head(InteliFalhas, n=10)
+```
+
+```{r}
+str(InteliFalhas)
+```
+
+```{r}
+summary(InteliFalhas)
+```
+
+# Limpeza das colunas
+
+Com base na análise das variáveis, decidi remover as descrições dos IDs, pois eles já representam suas próprias informações. Além disso, removemos a linha e coluna (cartesiano da posição da falha) , uma vez que não é nescessario ja que ja temos o campo
+
+```{r}
+final_data <- InteliFalhas[, c("ID", "DATA DETECCAO", "PONTO","LOC_ID","POS_ID","TYPE_ID","VIEW_ID")]
+head(final_data)
+```
+
+```{r}
+head(final_data)
+
+```
+
+# Visualizações dos Dados
+
+Nesta seção, inserimos as visualizações que facilitarão a identificação de padrões.
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(lubridate)
+```
+
+Convertemos essa coluna para POSIXct e extraímos apenas a data
+
+```{r}
+final_data <- final_data %>%
+  mutate(
+    DATA_DETEC = as.POSIXct(`DATA DETECCAO`, format = "%Y-%m-%d-%H.%M.%OS", tz = "UTC"),
+    date = as.Date(DATA_DETEC)
+  )
+```
+
+## Visualização 1: Falhas por Etapa (PONTO)
+
+Esta visualização mostra a frequência de falhas em cada etapa do processo.
+
+```{r}
+ggplot(final_data, aes(x = PONTO)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Frequência de Falhas por Etapa (PONTO)",
+       x = "Etapa do Processo",
+       y = "Número de Falhas") +
+  theme_minimal()
+```
+
+## Visualização 2: Frequência de Falhas por Parte do Carro (LOC_ID)
+
+```{r}
+#Converter a coluna LOC_ID para fator
+final_data$LOC_ID <- as.factor(final_data$LOC_ID)
+
+# Calcular os top 10 LOC_ID (com maiores contagens)
+top_locs <- final_data %>%
+  count(LOC_ID, sort = TRUE) %>%
+  slice(1:10) %>%
+  pull(LOC_ID)
+
+# Filtrar o dataset para manter apenas os top 10 e reordenar os níveis do fator
+final_data_top <- final_data %>%
+  filter(LOC_ID %in% top_locs) %>%
+  mutate(LOC_ID = fct_infreq(LOC_ID))  # fct_infreq ordena do mais frequente para o menos
+
+# Plotar o gráfico com os top 10 LOC_ID
+ggplot(final_data_top, aes(x = LOC_ID)) +
+  geom_bar(stat = "count", fill = "tomato") +
+  labs(title = "Frequência de Falhas por Parte do Carro (Top 10 LOC_ID)",
+       x = "Parte do Carro",
+       y = "Número de Falhas") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+```
+
+## Visualização 3: Evolução Diária das Falhas
+
+Agregar os dados diários, removendo registros com data inválida
+
+```{r}
+daily_failures <- final_data %>%
+  filter(!is.na(date) & date >= as.Date("2021-01-01")) %>%
+  group_by(date) %>%
+  summarise(total_failures = n()) %>%
+  filter(total_failures > 0)
+
+# Plotar o gráfico com dados a partir de 2021, sem os dias com 0 falhas
+ggplot(daily_failures, aes(x = date, y = total_failures)) +
+  geom_line(color = "darkgreen") +
+  geom_point(color = "darkgreen") +
+  labs(title = "Evolução Diária das Falhas (a partir de 2021, IDs com repetição)",
+       x = "Data",
+       y = "Número de Falhas") +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b-%Y") +
+  theme_minimal()
+```
+
+```{r}
+daily_failures_unique <- final_data %>%
+  filter(!is.na(date) & date >= as.Date("2021-01-01")) %>%
+  distinct(ID, date, .keep_all = TRUE) %>%  # Remove duplicatas com base em ID (para cada dia)
+  group_by(date) %>%
+  summarise(total_failures = n())
+
+# Plotar o gráfico com dados a partir de 2021, sem os dias com 0 falhas
+ggplot(daily_failures_unique, aes(x = date, y = total_failures)) +
+  geom_line(color = "darkgreen") +
+  geom_point(color = "darkgreen") +
+  labs(title = "Evolução Diária das Falhas (a partir de 2021, IDs únicos)",
+       x = "Data",
+       y = "Número de Falhas") +
+  scale_x_date(date_breaks = "1 month", date_labels = "%b-%Y") +
+  theme_minimal()
+```
+
+# Relatório
+
+### 🔍 Alterações realizadas
+
+-   **Removemos descrições do campo `ID`**, pois ele já representa a informação de forma otimizada.\
+-   **Excluímos colunas de posição cartesiana**, pois `POS_ID` já atende essa necessidade.
+
+### 📌 Colunas selecionadas para a versão final
+
+-   **`ID`** → Identificador único do carro.\
+-   **`DATA DETECCAO`** → Data e hora da detecção da falha.\
+-   **`PONTO`** → Etapa onde ocorreu a falha (Ex.: ZP, Rodagem, Água).\
+-   **`LOC_ID`** → Parte do carro afetada (Ex.: Tampa traseira, Alavanca do freio manual).\
+-   **`POS_ID`** → Posição da falha (Ex.: Direita, Esquerda, Superior esquerda).\
+-   **`TYPE_ID`** → Tipo de erro identificado (Ex.: Repuxado de cola, Resíduo de soldagem).\
+-   **`VIEW_ID`** → Código da imagem da peça.

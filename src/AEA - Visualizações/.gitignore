@@ -1,0 +1,8 @@
+# Ignorar arquivos CSV específicos
+InteliFalhas.csv
+InteliResultados.csv
+InteliStatus.csv
+InteliVeiculo.csv
+
+# Ignorar todos os arquivos CSV (se desejar ignorar qualquer CSV no repositório)
+*.csv
